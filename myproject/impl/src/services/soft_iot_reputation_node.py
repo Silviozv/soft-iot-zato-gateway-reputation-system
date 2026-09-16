@@ -21,7 +21,7 @@ class ReputationOrchestrator(Service):
             self.response.payload = {"status": "error", "message": "node_id é obrigatório"}
             return
 
-        # 1. Busca avaliações históricas na Tangle para este nó
+        # Busca avaliações históricas na Tangle para este nó
         self.logger.info(f"Buscando avaliações na Tangle para o nó: {target_node_id}")
         tangle_res = self.invoke('soft-iot.dlt.client.api.read_index', {'index': target_node_id})
         
@@ -54,7 +54,7 @@ class ReputationOrchestrator(Service):
             self.response.payload = {"node_id": target_node_id, "reputation": 0.5, "status": "no_data"}
             return
 
-        # 2. Executa o K-Means sobre as credibilidades
+        # Executa o K-Means sobre as credibilidades
         credibilities = [eval_data['credibility'] for eval_data in valid_evaluations]
         
         self.logger.info(f"Executando K-Means sobre as credibilidades de {len(credibilities)} avaliadores")
@@ -67,7 +67,7 @@ class ReputationOrchestrator(Service):
             self.logger.error("Falha no K-Means, utilizando todos os avaliadores como fallback.")
             trusted_credibilities = credibilities
 
-        # 3. Filtra as avaliações: mantemos apenas aquelas cuja credibilidade está no cluster seleto
+        # Filtra as avaliações: mantem apenas aquelas cuja credibilidade está no cluster seleto
         trusted_evaluations = []
         for ev in valid_evaluations:
             for tc in trusted_credibilities:
@@ -79,10 +79,9 @@ class ReputationOrchestrator(Service):
         if not trusted_evaluations:
             trusted_evaluations = valid_evaluations  # Fallback de segurança
 
-        # 4. Calcula a Reputação Final: Média aritmética das avaliações dos nós presentes no cluster confiável
-        # soma_valores = sum(ev['value'] for ev in trusted_evaluations)
-        # final_reputation = soma_valores / len(trusted_evaluations)
+        # Calcula a Reputação Final: Média aritmética das avaliações dos nós presentes no cluster confiável
 
+        # Inclui a reputação inicial na média
         soma_valores = sum(ev['value'] for ev in trusted_evaluations) + 0.5
         total_avaliacoes = len(trusted_evaluations) + 1
 
@@ -133,42 +132,58 @@ class CredibilityManager(Service):
             
         # Validação de Defesa: Verifica se retornou dados válidos
         if isinstance(tangle_res, list) and tangle_res:
-            data_block = tangle_res[0].get('data')
+            valid_creds = []
             
-            if isinstance(data_block, str):
-                try:
-                    data_block = json.loads(data_block)
-                except json.JSONDecodeError:
-                    data_block = {}
+            for tx in tangle_res:
+                data_block = tx.get('data')
+                
+                if isinstance(data_block, str):
+                    try:
+                        data_block = json.loads(data_block)
+                    except json.JSONDecodeError:
+                        continue
+                
+                if isinstance(data_block, dict) and data_block.get('type') == 'CRED_UPDATE':
+                    valid_creds.append(data_block)
             
-            if isinstance(data_block, dict):
-                current_cred = data_block.get('credibility', 0.5)
+            # Ordena as credibilidades pelo timestamp 
+            valid_creds.sort(key=lambda x: int(x.get('timestamp', 0)), reverse=True)
+            
+            if valid_creds:
+                current_cred = valid_creds[0].get('credibility', 0.5)
                 self.logger.info(f"Credibilidade recuperada para {evaluator_id}: {current_cred}")
-
 
         # Coleta da última avaliação
         last_evaluation_given = None
 
         if provider_id:
             # Busca todo o histórico de avaliações que o provedor já recebeu
-            provider_history = self.invoke('soft-iot.dlt.client.api.read_index', {'index': provider_id})
+            provider_history_raw = self.invoke('soft-iot.dlt.client.api.read_index', {'index': provider_id})
             
-            # Percorre a lista do mais recente para o mais antigo
-            if isinstance(provider_history, list):
-                for tx in provider_history:
+            valid_history = []
+
+            # Primeiro filtramos e extraímos os dados válidos
+            if isinstance(provider_history_raw, list):
+                for tx in provider_history_raw:
                     tx_data = tx.get('data')
                     
-                    # Defesa extra idêntica ao Orchestrator
                     if isinstance(tx_data, str):
                         try:
                             tx_data = json.loads(tx_data)
                         except json.JSONDecodeError:
                             tx_data = {}
                     
-                    if isinstance(tx_data, dict):
-                        if tx_data.get('type') == 'REP_EVALUATION' and tx_data.get('source') == evaluator_id:
-                            last_evaluation_given = tx_data.get('serviceEvaluation')
-                            break  # Encontrou a ocorrência mais recente, interrompe o loop
+                    if isinstance(tx_data, dict) and tx_data.get('type') == 'REP_EVALUATION':
+                        valid_history.append(tx_data)
+
+            # Ordena o histórico do mais recente para o mais antigo pelo Timestamp
+            valid_history.sort(key=lambda x: int(x.get('timestamp', 0)), reverse=True)
+
+            # Percorre a lista ordenada. A primeira ocorrência será garantidamente a mais recente.
+            for tx_data in valid_history:
+                if tx_data.get('source') == evaluator_id:
+                    last_evaluation_given = tx_data.get('serviceEvaluation')
+                    break
 
         # Tratamento da primeira avaliação
         if last_evaluation_given is None:
