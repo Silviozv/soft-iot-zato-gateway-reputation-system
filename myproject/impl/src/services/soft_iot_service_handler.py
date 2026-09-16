@@ -4,7 +4,8 @@ import os
 import json
 import datetime
 import random
-from time import sleep
+import time
+import math
 import requests
 
 from datetime import datetime, timezone
@@ -250,7 +251,7 @@ class WaitNodesResponsesTask(Service):
         self.logger.info(f"Iniciando janela de coleta de {wait_time}s para a requisição {request_id}...")
 
         # 2. Bloqueia este Worker de segundo plano (Deixa o banco recebendo as respostas no servidor ZMQ)
-        sleep(wait_time)
+        time.sleep(wait_time)
 
         # 3. Fim da espera: Verifica se a requisição ainda é válida
         gs_manager = GatewayStateManager()
@@ -494,10 +495,13 @@ class RequestNodeServiceTask(Service):
 
         # Atualização da credibilidade do nó avaliador
         try:
+            current_timestamp = int(time.time())
+
             cred_transaction = {
                 "type": "CRED_UPDATE",
                 "evaluator_id": id_evaluator,
-                "credibility": float(new_cred)
+                "credibility": float(new_cred),
+                "timestamp": current_timestamp
             }
             
             self.invoke('soft-iot.dlt.client.api.write', {
@@ -511,6 +515,8 @@ class RequestNodeServiceTask(Service):
         # Publicação na Tangle. Ignora se for egoísta
         if conduct_applied != 'SELFISH':
 
+            current_timestamp = int(time.time())
+
             final_evaluation_value_with_cred = final_service_evaluation * new_cred
 
             evaluation_transaction = {
@@ -520,7 +526,8 @@ class RequestNodeServiceTask(Service):
                 "target": node_id,
                 "serviceEvaluation": final_service_evaluation,
                 "nodeCredibility": float(new_cred),
-                "value": final_evaluation_value_with_cred
+                "value": final_evaluation_value_with_cred,
+                "timestamp": current_timestamp
             }
             
             self.invoke('soft-iot.dlt.client.api.write', {
