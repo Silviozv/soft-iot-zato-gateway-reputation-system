@@ -8,6 +8,7 @@ import random
 from zato.server.service import Service
 
 from soft_iot_id_manager import IDManager
+from soft_iot_gateway_state import GatewayStateManager
 
 logger = logging.getLogger('zato.node.type')
 
@@ -37,16 +38,14 @@ class NodeTypeManager:
                     # Valor inicial da conduta
                     cls._instance._current_conduct = "HONEST"
                     
-                    cls._instance.behavior_changed = False
-
                     logger.info(f"NodeTypeManager iniciado - Tipo: {cls._instance._node_type} - Taxa de honestidade: {cls._instance._honesty_rate}%")
                     
                     # Inicializa a conduta baseada no tipo
-                    cls._instance.define_conduct()
+                    cls._instance.define_conduct(False)
 
         return cls._instance
 
-    def define_conduct(self):
+    def define_conduct(self, behavior_changed):
         """
         Define a conduta baseada no tipo e na reputação (para o Perturbador).
         Reflete a lógica de Disturbing.java e Malicious.java.
@@ -70,7 +69,7 @@ class NodeTypeManager:
             
         # 4 - Perturbador (Lógica fiel ao Java)
         elif self._node_type == 4:
-            if self.behavior_changed:
+            if behavior_changed:
                 # Segunda Fase: Atingiu o limiar. Começa a perturbar baseado na taxa.
                 random_number = random.uniform(0, 100)
                 if random_number > self._honesty_rate:
@@ -108,24 +107,26 @@ class NodeEvaluationService(Service):
     def handle(self):
 
         nt_manager = NodeTypeManager()
-        id_m = IDManager()
+        # id_manager = IDManager()
+        gs_manager = GatewayStateManager()
 
         # Dados da avaliação 
         data = self.request.payload
         provider_id = data.get('provider_id')
+        behavior_changed = gs_manager.get_behavior_changed()
  
         service_evaluation = data.get('serviceEvaluation')
-        node_credibility = data.get('nodeCredibility')
+        # node_credibility = data.get('nodeCredibility')
         evaluation_value = data.get('value')
 
         # Consultando condulta
-        nt_manager.define_conduct()
+        nt_manager.define_conduct(behavior_changed)
         conduct = nt_manager.current_conduct
 
         if conduct == "SELFISH":
             # Egoísta não avalia 
             self.logger.info(f"Nó Egoísta ignorando avaliação para {provider_id}")
-            self.response.payload = {"status": "ignored"}
+            self.response.payload = {"status": "ignored", "conduct_applied": conduct}
             return
 
         final_service_evaluation = int(service_evaluation) if service_evaluation is not None else 0
@@ -141,27 +142,34 @@ class NodeEvaluationService(Service):
 
         # Preparando transação para a Tangle
         # source, group, type, target, serviceEvaluation, nodeCredibility, value (+ createdAt/publishedAt opcionais)
-        evaluation_transaction = {
-            "source": id_m.id,
-            "group": id_m.group,
-            "type": "REP_EVALUATION",
-            "target": provider_id,
-            "serviceEvaluation": final_service_evaluation,
-            "nodeCredibility": float(node_credibility),
-            "value": final_evaluation_value,
-            "createdAt": int(data.get("createdAt", 0)) or None,
-            "publishedAt": int(data.get("publishedAt", 0)) or None,
-        }
+        # evaluation_transaction = {
+        #     "source": id_manager.id,
+        #     "group": id_manager.group,
+        #     "type": "REP_EVALUATION",
+        #     "target": provider_id,
+        #     "serviceEvaluation": final_service_evaluation,
+        #     "nodeCredibility": float(node_credibility),
+        #     "value": final_evaluation_value,
+        #     "createdAt": int(data.get("createdAt", 0)) or None,
+        #     "publishedAt": int(data.get("publishedAt", 0)) or None,
+        # }
         
         # Remove campos None para evitar poluir o payload.
-        evaluation_transaction = {k: v for k, v in evaluation_transaction.items() if v is not None}
+        # evaluation_transaction = {k: v for k, v in evaluation_transaction.items() if v is not None}
 
         # Envia para a Tangle 
-        res = self.invoke('soft-iot.dlt.client.api.write', {
-            "index": provider_id,
-            "data": evaluation_transaction
-        })
+        # res = self.invoke('soft-iot.dlt.client.api.write', {
+        #     "index": provider_id,
+        #     "data": evaluation_transaction
+        # })
 
-        self.response.payload = {"status": "success", "conduct_applied": conduct, "tangle_response": res}
+
+        # if res.get("status") == "success":
+        #     self.response.payload = {"status": "success", "conduct_applied": conduct, "tangle_response": res}
+        # else:
+        #     self.response.payload = {"status": "error", "tangle_response": res}
+            
+        self.response.payload = {"status": "success", "conduct_applied": conduct, "final_evaluation_value": final_evaluation_value, "final_service_evaluation": final_service_evaluation}
+
         return
     

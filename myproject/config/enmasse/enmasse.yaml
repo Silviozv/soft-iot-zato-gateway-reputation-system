@@ -18,7 +18,7 @@ channel_rest:
   # Serviços da API
   - name: local_storage_get_last_data
     service: soft-iot.api.get-last-data
-    url_path: /soft-iot/devices/{device_id}/sensors/{sensor_id}/data/latest
+    url_path: /soft-iot/devices/sensors/data/latest
     data_format: json
   - name: local_storage_get_history
     service: soft-iot.api.get-history
@@ -85,6 +85,14 @@ channel_rest:
     service: soft-iot.zmq.start
     url_path: /soft-iot/dlt/zmq/start
     data_format: json
+  - name: zmq_handler_response
+    service: soft-iot.zmq.handler.response
+    url_path: /soft-iot/dlt/zmq/handler-response
+    data_format: json
+  - name: zmq_handler_request
+    service: soft-iot.zmq.handler.request
+    url_path: /soft-iot/dlt/zmq/handler-request
+    data_format: json
 
   # K-Means
   - name: kmeans_credibility_service
@@ -119,27 +127,39 @@ channel_rest:
     service: soft-iot.reputation.task.change_disturbing_behavior
     url_path: /soft-iot/reputation/task/change-disturbing-behavior
     data_format: json
-  - name: service_handler_check_devices
-    service: soft-iot.reputation.task.check_devices
-    url_path: /soft-iot/reputation/task/check-devices
-    data_format: json
   - name: service_handler_check_nodes_services
     service: soft-iot.reputation.task.check_nodes_services
     url_path: /soft-iot/reputation/task/check-nodes-services
     data_format: json
+  - name: service_handler_wait_nodes_responses
+    service: soft-iot.reputation.task.wait_nodes_responses
+    url_path: /soft-iot/reputation/task/wait-nodes-resposes
+    data_format: json
+  - name: service_handler_select_best_node
+    service: soft-iot.reputation.task.select_best_node
+    url_path: /soft-iot/reputation/task/select-best-node
+    data_format: json
+  - name: service_handler_request_node_service
+    service: soft-iot.reputation.task.request_node_service
+    url_path: /soft-iot/reputation/task/request-node-service
+    data_format: json
 
   # Serviço de debug temporário
   - name: service_handler_get_data_gateway
-    service: soft-iot.reputation.state.get_all
+    service: soft-iot.gateway.state.get
     url_path: /soft-iot/reputation/task/get-data
     data_format: json
 
 
   # Teste
-  # - name: test
-  #   service: soft-iot.test.credibility
-  #   url_path: /soft-iot/test
-  #   data_format: json
+  - name: test_chamada
+    service: soft-iot.test.async_worker
+    url_path: /soft-iot/test-worker
+    data_format: json
+  - name: test
+    service: soft-iot.test.invoke.dlt.write
+    url_path: /soft-iot/test-caller
+    data_format: json
 
   
 
@@ -206,6 +226,18 @@ external_scheduler:
     url: "http://localhost:11223/soft-iot/dlt/zmq/start"
     job_type: "one_time"
     initial_delay: 15
+
+  - name: "Requisição de serviços"
+    url: "http://localhost:11223/soft-iot/reputation/task/check-nodes-services"
+    job_type: "interval_based"
+    interval: 20
+    unit: "seconds"
+
+  - name: "Cálculo da reputação atual"
+    url: "http://localhost:11223/soft-iot/reputation/task/calculate-reputation"
+    job_type: "interval_based"
+    interval: 20
+    unit: "seconds"
 
   
 

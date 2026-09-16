@@ -105,12 +105,21 @@ class GetLastData(BaseAPIService):
 
     def handle(self):
         device_id, sensor_id = self._require_device_and_sensor()
+        
         if not device_id:
             return
 
         try:
             item = self._get_last(device_id, sensor_id, aggregated=None)
+
+            if item is None:
+                self.logger.warning(f"Sensor {device_id}/{sensor_id} não encontrado no banco local.")
+                self.response.status_code = 404
+                self.response.payload = {'error': 'Device or sensor not found', 'data': None}
+                return
+            
             self.response.payload = {'data': item}
+            
         except Exception as e:
             self.logger.error(f"Erro na API GetLastData: {e}")
             self.response.payload = {'error': str(e)}

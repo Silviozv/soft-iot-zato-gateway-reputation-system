@@ -43,7 +43,7 @@ export container_name=zato-$env_name
 export target=/opt/hot-deploy
 
 # --- Nome da sua imagem ---
-export package_address=rhianpablo11/esb-zato-soft-iot:v8
+export package_address=rhianpablo11/esb-zato-soft-iot:v10
 # export package_address=zato-image-base-test-v7
 
 # Absolute path to our source code on host
@@ -76,7 +76,7 @@ export TANGLE_API_PORT="3000"
 export ZMQ_IP="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' zmq-tangle)"
 export ZMQ_PORT='5556'
 
-export NODE_TYPE="1"
+export NODE_TYPE="4"
 export HONESTY_RATE="50"
 export GROUP="cloud/c1"
 

@@ -64,7 +64,10 @@ class DLTWriterService(DLTClientBaseService):
                 
                 # Se a API retornou um JSON válido, entrega a resposta do Zato.
                 if response.text and response.text.strip():
-                    self.response.payload = {"status": "success"}
+                    try:
+                        self.response.payload = {"status": "success", "tangle_res": response.json()}
+                    except ValueError:
+                        self.response.payload = {"status": "error"}
                 else:
                     self.response.payload = {"status": "error"}
 
@@ -177,57 +180,3 @@ class DLTIdReaderService(DLTClientBaseService):
         except Exception as e:
             self.logger.error(f"Falha na requisição de busca por ID {message_id}: {e}")
             self.response.payload = None
-
-# class ReputationGetValueService(Service):
-#     """
-#     Serviço que recupera o valor de reputação/credibilidade de um dispositivo na Tangle.
-#     """
-#     name = 'soft-iot.reputation.get_value'
-
-#     def handle(self):
-#         # 1. Recupera o ID do dispositivo do payload
-#         node_id = self.request.payload.get('node_id')
-        
-#         if not node_id:
-#             self.logger.error("node_id não fornecido para consulta de reputação.")
-#             self.response.payload = {"reputation_value": 0.0, "status": "error"}
-#             return
-
-#         # 2. Invoca o leitor de índice para buscar mensagens vinculadas ao node_id na Tangle
-#         # No sistema, o index de mensagens de reputação costuma ser o próprio ID do dispositivo
-#         self.logger.info(f"Buscando histórico de reputação para o dispositivo: {node_id}")
-        
-#         tangle_messages = self.invoke('soft-iot.dlt.client.api.read_index', {'index': node_id})
-
-#         if not tangle_messages or not isinstance(tangle_messages, list):
-#             self.logger.warning(f"Nenhuma mensagem encontrada na Tangle para o dispositivo {node_id}")
-#             self.response.payload = {"reputation_value": 0.0, "status": "not_found"}
-#             return
-
-#         # 3. Filtra as mensagens pelo tipo REP_CREDIBILITY
-#         # O valor de reputação oficial é gravado com este tipo de transação
-#         credibility_values = []
-        
-#         for msg in tangle_messages:
-#             # A API da Tangle retorna o JSON dentro de um campo 'data' ou similar
-#             # Dependendo da ponte Node.js, os dados podem estar em msg['data']
-#             data = msg.get('data', msg) 
-            
-#             if data.get('type') == 'REP_CREDIBILITY':
-#                 val = data.get('value')
-#                 if val is not None:
-#                     credibility_values.append(float(val))
-
-#         # 4. Define o valor de retorno (Pega o mais recente ou 0.0 se não existir)
-#         # Como as mensagens da Tangle geralmente vêm em ordem cronológica, o último valor é o atual
-#         if credibility_values:
-#             latest_reputation = credibility_values[-1]
-#             self.logger.info(f"Reputação atual de {node_id}: {latest_reputation}")
-#             self.response.payload = {
-#                 "reputation_value": latest_reputation,
-#                 "status": "ok",
-#                 "count": len(credibility_values)
-#             }
-#         else:
-#             self.logger.info(f"Dispositivo {node_id} ainda não possui registros de REP_CREDIBILITY.")
-#             self.response.payload = {"reputation_value": 0.0, "status": "no_records"}
