@@ -11,6 +11,8 @@ from fogbed import (
 import signal
 import time
 
+import os
+import json
 
 
 def criar_tangle(exp: FogbedDistributedExperiment, worker_list: List) -> IotaBasic:
@@ -86,7 +88,7 @@ def criar_apis_tangle(exp: FogbedDistributedExperiment, worker_list: List, instV
 
         api = Container(
             name=f'api{i}',
-            dimage='silviozv/tangle-hornet-api:1.0.0',
+            dimage='silviozv/tangle-hornet-api:1.0.1',
             dcmd='./entrypoint.sh', 
             environment={
                 'API_PORT': '3000',
@@ -154,17 +156,13 @@ def link_instVirt_worker(instVirt_list: List, worker_list: List) -> List:
     return
 
 
-########### NOVO ###############
-
-import os
-
 # Definição de caminhos globais (coloque no início do seu arquivo principal)
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, '../../'))
 
 def criar_gateways(exp, iota, worker_list, instVirt_list, qtd_gateways_por_worker_list, zmq_list, api_list, gateway_tipo_list, honestidade_malicioso, honestidade_perturbador):
 
-    # 1. GERAÇÃO DO ARQUIVO ENV.INI (Feito apenas uma vez antes de subir os nós)
+    # GERAÇÃO DO ARQUIVO ENV.INI (Feito apenas uma vez antes de subir os nós)
     os.makedirs('config/auto-generated', exist_ok=True)
     with open('config/auto-generated/env.ini', 'w') as f:
         f.write("[env]\n")
@@ -196,7 +194,7 @@ def criar_gateways(exp, iota, worker_list, instVirt_list, qtd_gateways_por_worke
                     ip=ip_gateway,
                     user='root',
                     privileged=True,
-                    dimage='rhianpablo11/esb-zato-soft-iot:v11',
+                    dimage='silviozv/soft-iot-gateway-zato:1.0.1',
                     dcmd='bash -c "sleep 60 && /usr/local/bin/start_wrapper.sh"',
                     environment={
                         'Zato_Dashboard_Password': '123456',
@@ -233,32 +231,6 @@ def criar_gateways(exp, iota, worker_list, instVirt_list, qtd_gateways_por_worke
     return gateways_list
 
 
-def configurar_gateways_pos_start(gateways_list):
-    """
-    Injeta o código Python e as configurações nos containers do Zato
-    apenas após a rede Fogbed estar em execução.
-    """
-    print("\n[INFO] Iniciando injeção de arquivos nos Gateways...")
-
-    for gat in gateways_list:
-        real_docker_name = f"mn.{gat.name}"
-        
-        print(f"Configurando diretórios no container {real_docker_name}...")
-        gat.cmd('mkdir -p /opt/hot-deploy/myproject /opt/hot-deploy/enmasse /opt/hot-deploy/python-reqs /home/ubuntu/mapping_archives/devices_config/')
-
-        print(f"Copiando arquivos do Host ({PROJECT_ROOT}) para o container {real_docker_name}...")
-        os.system(f"docker cp {PROJECT_ROOT}/. {real_docker_name}:/opt/hot-deploy/myproject/")
-        os.system(f"docker cp {PROJECT_ROOT}/config/enmasse/enmasse.yaml {real_docker_name}:/opt/hot-deploy/enmasse/enmasse.yaml")
-        os.system(f"docker cp {PROJECT_ROOT}/config/auto-generated/env.ini {real_docker_name}:/opt/hot-deploy/enmasse/env.ini")
-        os.system(f"docker cp {PROJECT_ROOT}/config/python-reqs/requirements.txt {real_docker_name}:/opt/hot-deploy/python-reqs/requirements.txt")
-        os.system(f"docker cp {PROJECT_ROOT}/impl/src/archives/. {real_docker_name}:/home/ubuntu/mapping_archives/devices_config/")
-        
-        # Limpeza
-        os.system(f"docker exec {real_docker_name} rm -f /opt/hot-deploy/myproject/impl/scripts/fogbed-test.py")
-        
-        print(f"✅ Container {gat.name} configurado com sucesso!")
-
-
 def criar_devices(exp: FogbedDistributedExperiment, qtd_devices_por_gateway: int, qtd_gateways_por_worker_list: List, gateways_list: List, worker_list: List, instVirt_list: List) -> List:
 
     # Cálculo seguro do IP base para não colidir
@@ -283,13 +255,13 @@ def criar_devices(exp: FogbedDistributedExperiment, qtd_devices_por_gateway: int
                 ip_device = f'10.0.0.{count_ip}'
                 count_ip += 1
 
-                # 1. Comando para instalar o pacote de redes
+                # Comando para instalar o pacote de redes
                 install_cmd = "apt-get update && apt-get install -y iproute2"
 
-                # 2. Ativação da interface e criação da rota manualmente no Fogbed
+                # Ativação da interface e criação da rota manualmente no Fogbed
                 net_setup = f"ip link set dev {interface_nome} up && ip addr add {ip_device}/8 dev {interface_nome} && ip route add 10.0.0.0/8 dev {interface_nome} || true"
 
-                # 3. Pipeline de execução completo:
+                # Pipeline de execução completo:
                 # - Instala rede -> Espera 5s -> Configura IP/Rota -> Espera 60s (Zato Boot) -> Roda o App Python
                 # - O "; tail -f /dev/null" no final garante que o container não morra se o Python falhar, permitindo debug.
                 dcmd_completo = f'bash -c "{install_cmd} && sleep 5 && {net_setup} && sleep 120; python -m app.main; tail -f /dev/null"'
@@ -315,147 +287,51 @@ def criar_devices(exp: FogbedDistributedExperiment, qtd_devices_por_gateway: int
     return devices_list
 
 
-########### NOVO ###############
+def patch_hornet_templates(
+    max_results: int = 50000,
+    snapshot_depth: int = 500,
+) -> None:
+    """
+    Sobrescreve os templates Hornet em /tmp/iota/$USER/config/
+    DEPOIS de IotaBasic() (installPrivateTangle) e ANTES de iota.start_network().
 
+    - max_results: restAPI.limits.maxResults (default Hornet: 1000)
+    - snapshot_depth: snapshots.depth (default Hornet: 50)
+    """
+    
+    user = os.getenv("USER")
+    if not user:
+        raise RuntimeError("Variável de ambiente USER não definida.")
 
-# def criar_gateways(exp: FogbedDistributedExperiment, iota: IotaBasic, worker_list: List, instVirt_list: List, qtd_gateways_por_worker_list: List, zmq_list: List, api_list: List, gateway_tipo_list: List, honestidade_malicioso: int, honestidade_perturbador: int) -> List:
+    config_dir = f"/tmp/iota/{user}/config"
+    template_files = (
+        "config-node.json",
+        "config-coo.json",
+        "config-spammer.json",
+    )
 
-#     count_ip = (2 + (3 * len(worker_list))) + 1
+    for fname in template_files:
+        path = os.path.join(config_dir, fname)
 
-#     gateways_list = []
+        if not os.path.isfile(path):
+            raise FileNotFoundError(
+                f"Template Hornet não encontrado: {path}. "
+                "Execute criar_tangle() antes de chamar patch_hornet_templates()."
+            )
 
-#     z = 0
+        with open(path, encoding="utf-8") as f:
+            cfg = json.load(f)
 
-#     for i in range(len(worker_list)):
+        cfg.setdefault("restAPI", {}).setdefault("limits", {})["maxResults"] = max_results
+        cfg.setdefault("snapshots", {})["depth"] = snapshot_depth
 
-#         for j in range(qtd_gateways_por_worker_list[i]):
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, indent=4)
 
-#             ip_gateway = f'10.0.0.{count_ip}'
-#             count_ip += 1
-
-#             if gateway_tipo_list[z] == '1':
-#                 taxa_de_honestidade = '100'
-#             elif gateway_tipo_list[z] == '2':
-#                 taxa_de_honestidade = str(honestidade_malicioso)
-#             elif gateway_tipo_list[z] == '3':
-#                 taxa_de_honestidade = '100'
-#             elif gateway_tipo_list[z] == '4':
-#                 taxa_de_honestidade = str(honestidade_perturbador)
-
-#             '''gat = Container(
-#                 name=f'gat{((i+1)*10) + j}',
-#                 dimage='silviozv/reputation-system:1.4.4', 
-#                 ip=ip_gateway,
-#                 dcmd='bash -c "sleep 60 && /bin/bash /usr/local/bin/karaf-init.sh"',
-#                 environment={ 
-#                     'COLLECT_TIME':'2000',
-#                     'PUBLISH_TIME': '200',
-#                     'TANGLE_NODE_URL':iota.containers[f'node{i}'].ip,
-#                     'ZMQ_SOCKET_PROTOCOL':'tcp',
-#                     'ZMQ_SOCKET_URL':str(zmq_list[i].ip),
-#                     'ZMQ_SOCKET_PORT': '5556',
-#                     'NODE_TYPE': gateway_tipo_list[z],
-#                     'HONESTY_RATE': taxa_de_honestidade,
-#                     'CHECK_DEVICE':'5',
-#                     'REQUEST_DATA':'10',
-#                     'WAIT_DEVICE_RESPONSE':'3',
-#                     'CHECK_NODES_SERVICE':'20',
-#                     'WAIT_NODES_RESPONSE':'15',
-#                     'USE_CREDIBILITY':'true',
-#                     'USE_LATEST_CREDIBILITY':'true',
-#                     'GATEWAY_REAL_IP': ip_gateway
-#                 }
-#             )'''
-
-#             gat = Container(
-#                     name=f'gat{((i+1)*10) + j}',
-#                     ip=ip_gateway,
-#                     user='root',
-#                     privileged=True,
-#                     dimage='rhianpablo11/esb-zato-soft-iot:v11',
-#                     dcmd='/usr/local/bin/start_wrapper.sh',    
-#                     environment={
-#                         'Zato_Dashboard_Password': '123456',
-#                         'ZATO_SSH_PASSWORD': '123456',
-#                         'Zato_IDE_Password': '123456',
-#                         'Zato_Log_Env_Details': 'true',
-#                         'Zato_Build_Verbosity': '',
-#                         'Zato_SAVE_DATA_ENABLED': 'True',
-#                         'Zato_COLLECTION_TIME': '2',
-#                         'Zato_PUBLISH_TIME': '6',
-#                         'Zato_AGGREGATION_WINDOW_MINUTES': '10',
-#                         'Zato_DATA_RETENTION_SECONDS': '1200',
-#                         'Zato_TANGLE_API_IP': str(api_list[i].ip), 
-#                         'Zato_TANGLE_API_PORT': '3000',
-#                         'Zato_ZMQ_IP': str(zmq_list[i].ip),
-#                         'Zato_ZMQ_PORT': '5556',
-#                         'Zato_NODE_TYPE': gateway_tipo_list[z], 
-#                         'Zato_HONESTY_RATE': taxa_de_honestidade,
-#                         'Zato_GROUP': 'cloud/c1',
-#                         'Zato_GATEWAY_REAL_IP': ip_gateway
-#                     },
-#                     port_bindings={
-#                         11223: f"1122{count_ip}"
-#                     }
-#                 )
-
-#             gateways_list.append(gat)
-
-#             exp.add_docker(gat, instVirt_list[i])
-
-#             z += 1
-
-#             print("Gateway: ", gat.ip)
-#             print("Honestidade: ", taxa_de_honestidade)
-        
-#     return gateways_list
-
-
-'''
-def criar_devices(exp: FogbedDistributedExperiment, qtd_devices_por_gateway: int, qtd_gateways_por_worker_list: List, gateways_list: List, worker_list: List, instVirt_list: List) -> List:
-
-    count_ip = (2 + (2 * len(worker_list)) + len(gateways_list)) + 1
-
-    devices_list = []
-
-    count = 0
-
-    for i in range(len(worker_list)):
-
-        for j in range(qtd_gateways_por_worker_list[i]):
-
-            for z in range(qtd_devices_por_gateway):
-
-                device_nome = f'dev{i}_{j}_{z}'
-
-                interface_nome = f'{device_nome}-eth0' 
-
-                ip_device = f'10.0.0.{count_ip}'
-                count_ip += 1
-
-                install_cmd = "apt-get update && apt-get install -y iproute2"
-
-                net_setup = f"ip link set dev {interface_nome} up && ip addr add {ip_device}/8 dev {interface_nome} && ip route add 10.0.0.0/8 dev {interface_nome} || true"
-
-                dcmd_completo = f'bash -c "{install_cmd} && sleep 5 && {net_setup} && sleep 110 && java -jar device.jar -bi {gateways_list[count].ip} -cd 1"'
-
-                dev = Container(
-                    name=device_nome,
-                    dimage='silviozv/python-iot-device:1.0.0',
-                    ip=ip_device,
-                    dcmd=dcmd_completo
-                )
-
-                devices_list.append(dev)
-
-                exp.add_docker(dev, instVirt_list[i])
-            
-                print("Device: ", dev.ip)
-
-            count += 1
-
-    return devices_list
-'''
+    print(
+        f"[INFO] Hornet templates patched: "
+        f"maxResults={max_results}, snapshots.depth={snapshot_depth}"
+    )
 
 
 setLogLevel('info')
@@ -481,7 +357,7 @@ if (__name__ == '__main__'):
     # worker_list.append(exp.add_worker('larsid12'))
     # worker_list.append(exp.add_worker('larsid13'))
     # worker_list.append(exp.add_worker('larsid14'))
-    worker_list.append(exp.add_worker('larsid15'))
+    # worker_list.append(exp.add_worker('larsid15'))
     # worker_list.append(exp.add_worker('larsid16'))
 
 
@@ -495,12 +371,12 @@ if (__name__ == '__main__'):
 
     #quant_devices = int(input("\nQuantidade de devices por gateway: "))
 
-    quant_honestos = 1
-    quant_maliciosos = 1
+    quant_honestos = 6
+    quant_maliciosos = 0
     quant_egoistas = 0
     quant_perturbadores = 0
 
-    honestidade_malicioso = 20
+    honestidade_malicioso = 80
     honestidade_perturbador = 0
 
     quant_devices = 1
@@ -516,6 +392,8 @@ if (__name__ == '__main__'):
     else:
 
         iota = criar_tangle(exp, worker_list)
+
+        patch_hornet_templates(max_results=50000, snapshot_depth=500)
 
         instVirt_list = criar_instancias_virtuais(exp, qtd_workers)
 
@@ -539,8 +417,6 @@ if (__name__ == '__main__'):
             exp.start()
             iota.start_network()
             print("Experimento iniciado")
-
-            configurar_gateways_pos_start(gateways_list)
 
             while True:
 
