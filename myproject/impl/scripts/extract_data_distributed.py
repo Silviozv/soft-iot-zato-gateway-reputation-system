@@ -8,7 +8,7 @@ from datetime import datetime
 # CONFIGURAÇÕES
 # ==========================================
 # Nome exato da imagem Docker dos seus gateways
-IMAGEM_GATEWAY = "rhianpablo11/esb-zato-soft-iot:v11"
+IMAGEM_GATEWAY = "silviozv/soft-iot-gateway-zato:1.0.0"
 
 # A porta interna do Zato onde o serviço REST está rodando
 PORTA_ZATO = "11223"
@@ -17,7 +17,7 @@ PORTA_ZATO = "11223"
 ENDPOINT_EXTRACAO = "/soft-iot/reputation/task/get-data"
 
 # Diretório base onde as coleções serão acumuladas
-DIRETORIO_SAIDA = "data"
+DIRETORIO_SAIDA = "data_distributed"
 
 # Prefixo do arquivo JSON bruto
 PREFIXO_ARQUIVO = "backup_gateways_data_"
@@ -29,7 +29,8 @@ PREFIXO_ARQUIVO = "backup_gateways_data_"
 TOTAL_MAQUINAS = 15 
 
 # Gera a lista dinamicamente: ['larsid01', 'larsid02', ..., 'larsid15']
-MAQUINAS_SSH = [f"larsid{i:02d}" for i in range(15, 17)]
+#MAQUINAS_SSH = [f"larsid{i:02d}" for i in range(1, 2)]
+MAQUINAS_SSH = ["larsid01", "larsid02", "larsid04", "larsid13", "larsid14"]
 
 def obter_containers_remotos():
     """Busca containers com a imagem do gateway via SSH em cada máquina."""
