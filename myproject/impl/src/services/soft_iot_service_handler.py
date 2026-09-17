@@ -517,7 +517,7 @@ class RequestNodeServiceTask(Service):
 
             current_timestamp = int(time.time())
 
-            final_evaluation_value_with_cred = final_service_evaluation * new_cred
+            final_evaluation_value_with_cred = final_service_evaluation * old_cred
 
             evaluation_transaction = {
                 "source": id_evaluator,
