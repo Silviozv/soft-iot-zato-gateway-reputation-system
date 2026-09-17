@@ -18,7 +18,7 @@ class CleanupOldData(Service):
     name = 'soft-iot.cleanup.service'
 
     def handle(self):
-        # 1. Configuração da Retenção (Agora em Segundos)
+        # Configuração da Retenção (Agora em Segundos)
         try:
             # Procura pela variável DATA_RETENTION_SECONDS
             retention_seconds = int(os.environ.get('Zato_DATA_RETENTION_SECONDS', DEFAULT_RETENTION_SECONDS))
@@ -47,7 +47,7 @@ class CleanupOldData(Service):
             conn.execute("PRAGMA busy_timeout = 5000;")
             cursor = conn.cursor()
 
-            # 2. Executa a Deleção
+            # Executa a Deleção
             query = """
                 DELETE FROM sensor_data 
                 WHERE end_datetime <= ? 

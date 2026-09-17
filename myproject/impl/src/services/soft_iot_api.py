@@ -14,7 +14,7 @@ class BaseAPIService(Service):
         if not os.path.exists(DB_FILENAME):
             raise ValueError(f"Banco de dados não encontrado em {DB_FILENAME}")
         
-        # Adicionado timeout para evitar 'Database is locked' durante a agregação/cleanup
+        # Adiciona timeout para evitar 'Database is locked' durante a agregação/cleanup
         conn = sqlite3.connect(DB_FILENAME, timeout=5000)
         conn.row_factory = sqlite3.Row 
         

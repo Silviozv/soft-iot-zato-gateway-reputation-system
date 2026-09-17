@@ -42,7 +42,7 @@ class GatewayStateManager:
                 with conn:
                     cursor = conn.cursor()
                     
-                    # 1. DDL: Criação da Tabela
+                    # DDL: Criação da Tabela
                     cursor.execute('''
                         CREATE TABLE IF NOT EXISTS gateway_properties (
                             key TEXT PRIMARY KEY,

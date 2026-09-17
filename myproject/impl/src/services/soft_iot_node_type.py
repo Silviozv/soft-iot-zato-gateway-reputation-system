@@ -28,7 +28,7 @@ class NodeTypeManager:
                 if cls._instance is None:
                     cls._instance = super(NodeTypeManager, cls).__new__(cls)
                     
-                    # 1. Carrega as configurações das variáveis de ambiente
+                    # Carrega as configurações das variáveis de ambiente
                     # Tipos: 1 - Honesto, 2 - Malicioso, 3 - Egoista, 4 - Perturbador
                     cls._instance._node_type = int(os.environ.get('Zato_NODE_TYPE', 1))
 
@@ -139,35 +139,6 @@ class NodeEvaluationService(Service):
             )
             final_service_evaluation = 0
             final_evaluation_value = 0.0
-
-        # Preparando transação para a Tangle
-        # source, group, type, target, serviceEvaluation, nodeCredibility, value (+ createdAt/publishedAt opcionais)
-        # evaluation_transaction = {
-        #     "source": id_manager.id,
-        #     "group": id_manager.group,
-        #     "type": "REP_EVALUATION",
-        #     "target": provider_id,
-        #     "serviceEvaluation": final_service_evaluation,
-        #     "nodeCredibility": float(node_credibility),
-        #     "value": final_evaluation_value,
-        #     "createdAt": int(data.get("createdAt", 0)) or None,
-        #     "publishedAt": int(data.get("publishedAt", 0)) or None,
-        # }
-        
-        # Remove campos None para evitar poluir o payload.
-        # evaluation_transaction = {k: v for k, v in evaluation_transaction.items() if v is not None}
-
-        # Envia para a Tangle 
-        # res = self.invoke('soft-iot.dlt.client.api.write', {
-        #     "index": provider_id,
-        #     "data": evaluation_transaction
-        # })
-
-
-        # if res.get("status") == "success":
-        #     self.response.payload = {"status": "success", "conduct_applied": conduct, "tangle_response": res}
-        # else:
-        #     self.response.payload = {"status": "error", "tangle_response": res}
             
         self.response.payload = {"status": "success", "conduct_applied": conduct, "final_evaluation_value": final_evaluation_value, "final_service_evaluation": final_service_evaluation}
 

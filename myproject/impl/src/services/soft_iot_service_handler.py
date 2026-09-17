@@ -27,15 +27,15 @@ class GetGatewayStateService(Service):
         self.logger.info("Executando GetGatewayStateService para extração completa de estado local...")
         
         try:
-            # 1. Instancia o DAO
+            # Instancia o DAO
             gs_manager = GatewayStateManager()
             
-            # 2. Coleta a totalidade dos dados das tabelas
+            # Coleta a totalidade dos dados das tabelas
             properties_data = gs_manager.get_all_properties()
             requests_data = gs_manager.get_all_requests()
             responses_data = gs_manager.get_all_responses() 
             
-            # 3. Monta o DTO hierárquico para a resposta (Payload)
+            # Monta o DTO hierárquico para a resposta (Payload)
             self.response.payload = {
                 "status": "success",
                 "data": {
@@ -143,7 +143,7 @@ class CheckNodesServicesTask(Service):
 
         last_id, last_status = gs_manager.get_last_request_status()
 
-        # 1. Bloqueio de Concorrência: Verifica se já existe um pedido em andamento
+        # Bloqueio de Concorrência: Verifica se já existe um pedido em andamento
         if last_status == "WAITING_RESPONSES"  or last_status == "CHOSING_BETTER_NODE" or last_status == "REQUESTING_SERVICE":
 
             start_time_str = gs_manager.get_start_request_time(last_id)
@@ -236,7 +236,7 @@ class WaitNodesResponsesTask(Service):
     name = 'soft-iot.reputation.task.wait_nodes_responses'
 
     def handle(self):
-        # 1. Recupera os dados enviados pela CheckNodesServicesTask
+        # Recupera os dados enviados pela CheckNodesServicesTask
         payload = self.request.payload or {}
         request_id = payload.get('request_id')
         
@@ -250,10 +250,10 @@ class WaitNodesResponsesTask(Service):
 
         self.logger.info(f"Iniciando janela de coleta de {wait_time}s para a requisição {request_id}...")
 
-        # 2. Bloqueia este Worker de segundo plano (Deixa o banco recebendo as respostas no servidor ZMQ)
+        # Bloqueia este Worker de segundo plano (Deixa o banco recebendo as respostas no servidor ZMQ)
         time.sleep(wait_time)
 
-        # 3. Fim da espera: Verifica se a requisição ainda é válida
+        # Fim da espera: Verifica se a requisição ainda é válida
         gs_manager = GatewayStateManager()
         current_status = gs_manager.get_request_status(request_id)
 
@@ -261,7 +261,7 @@ class WaitNodesResponsesTask(Service):
         if current_status == 'WAITING_RESPONSES':
             self.logger.info(f"Janela concluída. Atualizando status da requisição {request_id} para iniciar cálculo.")
             
-            # 4. Muda o status
+            # Muda o status
             gs_manager.update_request_status(request_id, 'CHOSING_BETTER_NODE')
             
             self.invoke_async('soft-iot.reputation.task.select_best_node', {"request_id": request_id}, None)
@@ -345,7 +345,7 @@ class SelectBestNodeTask(Service):
             gs_manager.finalize_request(request_id, 'FAILED')
             return
 
-        # 5. Seleção do Vencedor
+        # Seleção do Vencedor
         best_node = candidates_ranking[0]
         
         self.logger.info(
@@ -396,7 +396,7 @@ class RequestNodeServiceTask(Service):
         collected_data = []
         has_error = False
 
-        # 3. Itera sobre os serviços oferecidos e faz a requisição REST
+        # Itera sobre os serviços oferecidos e faz a requisição REST
         # (Um gateway pode ter oferecido múltiplos sensores compatíveis)
         for service in services:
             device_id = service.get('device_id')

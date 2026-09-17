@@ -67,8 +67,8 @@ class AggregateSensorData(Service):
                     VALUES (?, ?, ?)
                 """, (device_id, sensor_id, last_time))
 
-        # Magia do SQLite: Agrupa criando blocos dinâmicos do tamanho de window_seconds
-        # E só pega blocos que já fecharam (menor que o bloco atual do relógio)
+        # Agrupa criando blocos dinâmicos do tamanho de window_seconds
+        # Só pega blocos que já fecharam (menor que o bloco atual do relógio)
         query = """
             SELECT 
                 datetime((CAST(strftime('%s', start_datetime) AS INTEGER) / ?) * ?, 'unixepoch') as bucket_start,
@@ -84,7 +84,7 @@ class AggregateSensorData(Service):
             ORDER BY bucket_start ASC
         """
         
-        # Passamos window_seconds várias vezes para completar a fórmula matemática da query
+        # Passando window_seconds várias vezes para completar a fórmula matemática da query
         cursor.execute(query, (self.window_seconds, self.window_seconds, device_id, sensor_id, last_time, self.window_seconds, self.window_seconds))
         aggregates = cursor.fetchall()
         
