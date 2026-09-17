@@ -194,21 +194,21 @@ class CredibilityManager(Service):
         
 
         # Confiabilidade: Comparação entre a nota dada e o consenso da rede
-        reliability = 1.0 - abs(consensus_reputation - evaluation_given)
+        reliability = abs(consensus_reputation - evaluation_given)
         
         # Consistência: Comparação entre a nota atual e a conduta anterior do mesmo nó
-        consistency = 1.0 - abs(evaluation_given - last_evaluation_given)
+        consistency = abs(evaluation_given - last_evaluation_given)
 
         # Limiares de decisão via variáveis de ambiente 
-        RELIABILITY_THRESHOLD = float(os.environ.get('Zato_RELIABILITY_THRESHOLD', '0.5'))
-        CONSISTENCY_THRESHOLD = float(os.environ.get('Zato_CONSISTENCY_THRESHOLD', '0.5'))
+        RELIABILITY_THRESHOLD = float(os.environ.get('Zato_RELIABILITY_THRESHOLD', '0.4'))
+        CONSISTENCY_THRESHOLD = float(os.environ.get('Zato_CONSISTENCY_THRESHOLD', '0.4'))
 
         MIN_STEP = 0.01
 
         new_cred = current_cred
 
-        is_reliable = reliability >= RELIABILITY_THRESHOLD
-        is_consistent = consistency >= CONSISTENCY_THRESHOLD
+        is_reliable = reliability <= RELIABILITY_THRESHOLD
+        is_consistent = consistency <= CONSISTENCY_THRESHOLD
 
         # Cenário ideal
         if is_reliable and is_consistent:
