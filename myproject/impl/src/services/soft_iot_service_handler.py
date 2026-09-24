@@ -402,17 +402,13 @@ class RequestNodeServiceTask(Service):
             device_id = service.get('device_id')
             sensor_id = service.get('sensor_id')
             
-            url = f"http://{ip_target}:11223/soft-iot/devices/sensors/data/latest"
+            url = f"http://{ip_target}:11223/soft-iot/devices/{device_id}/sensors/{sensor_id}/data/latest"
 
-            request_payload = {
-                "device_id": device_id,
-                "sensor_id": sensor_id
-            }
             
             try:
-                self.logger.info(f"Requisitando dados: {url} | Payload: {request_payload}")
+                self.logger.info(f"Requisitando dados: {url}")
                 
-                response = requests.get(url, json=request_payload, timeout=10)
+                response = requests.get(url, timeout=10)
                 
                 if response.status_code == 200:
                     # Converte a string JSON para Dicionário Python
