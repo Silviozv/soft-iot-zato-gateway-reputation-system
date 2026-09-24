@@ -18,7 +18,7 @@ channel_rest:
   # Serviços da API
   - name: local_storage_get_last_data
     service: soft-iot.api.get-last-data
-    url_path: /soft-iot/devices/sensors/data/latest
+    url_path: /soft-iot/devices/{device_id}/sensors/{sensor_id}/data/latest
     data_format: json
   - name: local_storage_get_history
     service: soft-iot.api.get-history
@@ -151,15 +151,6 @@ channel_rest:
     data_format: json
 
 
-  # Teste
-  - name: test_chamada
-    service: soft-iot.test.async_worker
-    url_path: /soft-iot/test-worker
-    data_format: json
-  - name: test
-    service: soft-iot.test.invoke.dlt.write
-    url_path: /soft-iot/test-caller
-    data_format: json
 
   
 
@@ -245,4 +236,3 @@ external_scheduler:
   #   url: "http://localhost:11223/soft-iot/test"
   #   job_type: "one_time"
   #   initial_delay: 20 # Espera 15s após o Zato subir para chamar
-
