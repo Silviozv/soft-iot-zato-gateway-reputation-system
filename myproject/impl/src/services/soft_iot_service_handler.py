@@ -373,13 +373,13 @@ class RequestNodeServiceTask(Service):
 
         request_id = self.request.payload.get('request_id')
         best_node = self.request.payload.get('best_node')
+
+        gs_manager = GatewayStateManager()
         
         if not request_id or not best_node:
             self.logger.error("Falha: 'request_id' ou 'best_node' não fornecidos para consumo de dados.")
             gs_manager.finalize_request(request_id, 'FAILED')
             return
-
-        gs_manager = GatewayStateManager()
         
         ip_target = best_node.get('ip_source')
         services = best_node.get('services', [])
@@ -521,7 +521,7 @@ class RequestNodeServiceTask(Service):
                 "type": "REP_EVALUATION",
                 "target": node_id,
                 "serviceEvaluation": final_service_evaluation,
-                "nodeCredibility": float(new_cred),
+                "nodeCredibility": float(old_cred),
                 "value": final_evaluation_value_with_cred,
                 "timestamp": current_timestamp
             }
