@@ -230,6 +230,12 @@ external_scheduler:
     interval: 20
     unit: "seconds"
 
+  - name: "Checagem de comportamento perturbador"
+    url: "http://localhost:11223/soft-iot/reputation/task/change-disturbing-behavior"
+    job_type: "interval_based"
+    interval: 20
+    unit: "seconds"
+
   
 
   # - name: "Inicializando teste - Credibility manager"
