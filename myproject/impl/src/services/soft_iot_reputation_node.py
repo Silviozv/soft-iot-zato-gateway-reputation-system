@@ -81,13 +81,13 @@ class ReputationOrchestrator(Service):
 
         # Calcula a Reputação Final: Média aritmética das avaliações dos nós presentes no cluster confiável
 
-        # Inclui a reputação inicial na média
-        soma_valores = sum(ev['value'] for ev in trusted_evaluations) + 0.5
-        total_avaliacoes = len(trusted_evaluations) + 1
+        PRIOR = 0.5
+        PRIOR_WEIGHT = float(os.environ.get('Zato_REP_PRIOR_WEIGHT', '5'))
 
-        final_reputation = soma_valores / total_avaliacoes
+        sum_values = sum(ev['value'] for ev in trusted_evaluations) + (PRIOR * PRIOR_WEIGHT)
+        total_evaluations  = len(trusted_evaluations) + PRIOR_WEIGHT
 
-        # Garante o limite estrito do intervalo [-1.0, 1.0]
+        final_reputation = sum_values / total_evaluations
         final_reputation = max(-1.0, min(1.0, final_reputation))
 
         self.logger.info(
@@ -200,8 +200,8 @@ class CredibilityManager(Service):
         consistency = abs(evaluation_given - last_evaluation_given)
 
         # Limiares de decisão via variáveis de ambiente 
-        RELIABILITY_THRESHOLD = float(os.environ.get('Zato_RELIABILITY_THRESHOLD', '0.4'))
-        CONSISTENCY_THRESHOLD = float(os.environ.get('Zato_CONSISTENCY_THRESHOLD', '0.4'))
+        RELIABILITY_THRESHOLD = float(os.environ.get('Zato_RELIABILITY_THRESHOLD', '0.5'))
+        CONSISTENCY_THRESHOLD = float(os.environ.get('Zato_CONSISTENCY_THRESHOLD', '0.5'))
 
         MIN_STEP = 0.01
 
