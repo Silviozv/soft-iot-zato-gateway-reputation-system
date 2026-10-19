@@ -94,7 +94,7 @@ A terminologia deste projeto (`message`, `messageId`, `/message`) segue a Chrysa
 O diagrama abaixo mostra a instância mínima da infraestrutura, abstraindo a escalabilidade: um nó Hornet, a Tangle Hornet API, a ponte ZMQ, um gateway e um dispositivo.
 
 <p align="center">
-  <img src="docs/images/architecture.png" width="450" alt="Organização mínima da arquitetura do sistema">
+  <img src="docs/images/architecture.png" width="350" alt="Organização mínima da arquitetura do sistema">
   <br><em>Figura 1. Organização mínima da arquitetura do sistema, abstraindo a escalabilidade.</em>
 </p>
 
@@ -133,7 +133,7 @@ O gateway **não** fala diretamente com o nó Hornet. Toda a integração com a 
 A camada de percepção é formada por dispositivos virtuais em Python que operam como clientes MQTT e emulam sensores. Cada dispositivo se conecta ao **broker MQTT local do gateway**, o que permite vários dispositivos por gateway.
 
 <p align="center">
-  <img src="docs/images/sequence_diagram.png" width="600" alt="Diagrama de sequência da comunicação do dispositivo com o gateway">
+  <img src="docs/images/sequence_diagram.png" width="420" alt="Diagrama de sequência da comunicação do dispositivo com o gateway">
   <br><em>Figura 2. Diagrama de sequência da comunicação do dispositivo com o gateway.</em>
 </p>
 
@@ -313,22 +313,22 @@ sequenceDiagram
     participant H2 as Hornet (worker do provedor)
     participant Z as Ponte ZMQ (provedor)
     participant P as Gateway provedor
-
+ 
     G->>G: check_nodes_services (sorteia serviço)
     G->>API: POST /message (REP_HAS_SVC, REP_SVC_REQ)
     API->>H1: submete a mensagem
     H1-->>H2: propagação P2P
     H2->>Z: evento MQTT
-    Z->>P: ZMQ "REP_HAS_SVC {json}"
+    Z->>P: ZMQ publica REP_HAS_SVC + JSON
     P->>P: handler.request (procura sensores compatíveis)
     P->>API: POST /message (REP_HAS_SVC, REP_SVC_RES)
     Note over G,P: a resposta volta pelo mesmo caminho (Tangle, ponte, ZMQ)
     G->>G: handler.response (aceita se target e estado corretos)
     G->>G: wait_nodes_responses (janela ~10 s)
     G->>G: select_best_node (reputação de cada candidato)
-    G->>P: HTTP GET /soft-iot/devices/.../data/latest (porta 11223)
+    G->>P: HTTP GET data/latest (porta 11223)
     G->>G: node.evaluation + credibility.manager
-    G->>API: POST /message (CRED_<id> e REP_EVALUATION)
+    G->>API: POST /message (CRED_ID do avaliador e REP_EVALUATION)
     G->>G: finalize_request
 ```
 
