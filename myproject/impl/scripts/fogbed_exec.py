@@ -194,7 +194,7 @@ def criar_gateways(exp, iota, worker_list, instVirt_list, qtd_gateways_por_worke
                     ip=ip_gateway,
                     user='root',
                     privileged=True,
-                    dimage='silviozv/soft-iot-gateway-zato:1.0.1',
+                    dimage='silviozv/soft-iot-gateway-zato:1.0.0',
                     dcmd='bash -c "sleep 60 && /usr/local/bin/start_wrapper.sh"',
                     environment={
                         'Zato_Dashboard_Password': '123456',

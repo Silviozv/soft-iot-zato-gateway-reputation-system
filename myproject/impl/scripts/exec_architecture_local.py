@@ -85,7 +85,7 @@ if __name__ == '__main__':
             -e Zato_HONESTY_RATE="100" \\
             -e Zato_GROUP="cloud/c1" \\
             -e Zato_GATEWAY_REAL_IP="{gateway_ip}" \\
-            silviozv/soft-iot-gateway-zato:1.0.3 \\
+            silviozv/soft-iot-gateway-zato:1.0.0 \\
             bash -c "sleep 10 && /usr/local/bin/start_wrapper.sh"
         """
         executar_comando(cmd_gat)
