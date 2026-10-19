@@ -305,33 +305,6 @@ A Tangle continua sendo a fonte persistida de verdade. O ZMQ apenas evita *polli
 
 Ciclo disparado pelo scheduler (`check-nodes-services`, a cada 20 s). A propagação entre gateways passa pelo P2P do Hornet. O ZMQ entrega localmente os eventos do nó de cada worker.
 
-```mermaid
-sequenceDiagram
-    participant G as Gateway solicitante
-    participant API as Tangle Hornet API
-    participant H1 as Hornet (worker do solicitante)
-    participant H2 as Hornet (worker do provedor)
-    participant Z as Ponte ZMQ (provedor)
-    participant P as Gateway provedor
- 
-    G->>G: check_nodes_services (sorteia serviço)
-    G->>API: POST /message (REP_HAS_SVC, REP_SVC_REQ)
-    API->>H1: submete a mensagem
-    H1-->>H2: propagação P2P
-    H2->>Z: evento MQTT
-    Z->>P: ZMQ publica REP_HAS_SVC + JSON
-    P->>P: handler.request (procura sensores compatíveis)
-    P->>API: POST /message (REP_HAS_SVC, REP_SVC_RES)
-    Note over G,P: a resposta volta pelo mesmo caminho (Tangle, ponte, ZMQ)
-    G->>G: handler.response (aceita se target e estado corretos)
-    G->>G: wait_nodes_responses (janela ~10 s)
-    G->>G: select_best_node (reputação de cada candidato)
-    G->>P: HTTP GET data/latest (porta 11223)
-    G->>G: node.evaluation + credibility.manager
-    G->>API: POST /message (CRED_ID do avaliador e REP_EVALUATION)
-    G->>G: finalize_request
-```
-
 ### Tarefas (`soft_iot_service_handler.py`)
 
 1. **`check_nodes_services`**: evita concorrência (timeout de 120 s). Cria a requisição local, publica `REP_SVC_REQ` em `REP_HAS_SVC` e dispara `wait_nodes_responses` de forma assíncrona.
@@ -637,11 +610,9 @@ Detalhes de configuração do cluster Zato/Enmasse seguem a documentação da im
 
 ## Referências
 
-- **[9]** IOTA Foundation. *IOTA Documentation*. <https://docs.iota.org/>
-- **[10]** IOTA Foundation. *iota.go*. <https://github.com/iotaledger/iota.go>
-- **[11]** LARSID. *Fogbed*. <https://larsid.github.io/fogbed/>
-- **[12]** A. C. S. Santos. *Sistema de Reputação Distribuído com Blockchain para Ecossistemas IoT*. Trabalho de Conclusão de Curso, Universidade Estadual de Feira de Santana.
-- **[13]** A. K. Jain. "Data clustering: 50 years beyond K-means". *Pattern Recognition Letters*, vol. 31, no. 8, pp. 651–666, 2010.
-- **[14]** Zato Source. *zato*. <https://github.com/zatosource/zato>
-
-> A numeração segue a do relatório técnico do projeto.
+- IOTA Foundation. *IOTA Documentation*. <https://docs.iota.org/>
+- IOTA Foundation. *iota.go*. <https://github.com/iotaledger/iota.go>
+- LARSID. *Fogbed*. <https://larsid.github.io/fogbed/>
+- A. C. S. Santos. *Sistema de Reputação Distribuído com Blockchain para Ecossistemas IoT*. Trabalho de Conclusão de Curso, Universidade Estadual de Feira de Santana.
+- A. K. Jain. "Data clustering: 50 years beyond K-means". *Pattern Recognition Letters*, vol. 31, no. 8, pp. 651–666, 2010.
+- Zato Source. *zato*. <https://github.com/zatosource/zato>
