@@ -3,6 +3,8 @@
 from zato.server.service import Service
 import sqlite3
 import os
+import json
+import re
 
 # Caminho do banco de dados (mesmo usado pelo storage)
 DB_FILENAME = "/opt/zato/env/soft_iot_data.db"
@@ -29,10 +31,27 @@ class BaseAPIService(Service):
         return results
 
     def _require_device_and_sensor(self):
-        device_id = self.request.payload.get('device_id')
-        sensor_id = self.request.payload.get('sensor_id')
+        device_id = None
+        sensor_id = None
+
+        # Path parameters do canal REST
+        params = getattr(self.request.http, 'params', None) or {}
+        device_id = params.get('device_id')
+        sensor_id = params.get('sensor_id')
+
+        # Fallback: extrair do path bruto
+        if not device_id or not sensor_id:
+            path = (getattr(self, 'wsgi_environ', None) or {}).get('PATH_INFO', '')
+            match = re.search(r'/devices/([^/]+)/sensors/([^/]+)', path)
+            if match:
+                device_id = device_id or match.group(1)
+                sensor_id = sensor_id or match.group(2)
 
         if not device_id or not sensor_id:
+            self.logger.warning(
+                f"Parâmetros ausentes. http.params={params} "
+                f"PATH_INFO={(getattr(self, 'wsgi_environ', None) or {}).get('PATH_INFO')}"
+            )
             self.response.payload = {'error': 'device_id and sensor_id are required'}
             self.response.status_code = 400
             return None, None
