@@ -124,8 +124,6 @@ O gateway **não** fala diretamente com o nó Hornet. Toda a integração com a 
 - Os **gateways de um mesmo worker compartilham** essa API e essa ponte.
 - Gateways de workers diferentes comunicam-se por dois meios: **indiretamente**, pela Tangle (P2P entre os nós Hornet), na descoberta; e **diretamente**, por HTTP no IP do provedor, no consumo do serviço.
 
-> Os resultados da seção [Resultados experimentais](#resultados-experimentais) foram obtidos em **uma única máquina** (topologia mínima, sem múltiplos workers). A distribuição entre workers é suportada pelo script do Fogbed, mas ainda não foi usada para avaliar escalabilidade.
-
 ---
 
 ## Dispositivos IoT e protocolo TATU
@@ -418,8 +416,6 @@ No `__main__`, o exemplo padrão usa 6 gateways honestos, 0 maliciosos, 0 egoís
 | 2 | Malicioso, 70% de honestidade (furtivo) | Estabiliza em faixa intermediária (~0,6), claramente abaixo dos honestos |
 | 3 | Perturbador, 0% de honestidade | Sobe rapidamente até ~0,8 (perto da requisição 20) e declina depois da mudança de conduta |
 | 4 | Egoísta | Sem impacto negativo nos demais; todos têm trajetória crescente |
-
-> Os valores aproximados da tabela vêm da leitura dos gráficos.
 
 ### Cenário 1: malicioso agressivo (30% de honestidade)
 
