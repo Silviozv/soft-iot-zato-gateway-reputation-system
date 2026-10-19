@@ -377,7 +377,7 @@ Script: **`impl/scripts/fogbed_exec.py`**. Monta um `FogbedDistributedExperiment
 3. **Instâncias virtuais**: uma por worker.
 4. **Ponte ZMQ** (`silviozv/iota-zmq-bridge:1.0.0`): `MQTT_IP` do nó Hornet do worker; `INDEXES=REP_*`. Uma por worker.
 5. **Tangle Hornet API** (`silviozv/tangle-hornet-api:1.0.1`): porta 3000, ligada ao nó do worker (porta 14265). Uma por worker.
-6. **`criar_gateways`**: imagem `silviozv/soft-iot-gateway-zato:1.0.1`, distribuídos entre os workers de forma circular. Cada gateway recebe a API e a ponte do **seu** worker. Executa como `root`, em modo `privileged`, com IP fixo e a porta 11223 exposta.
+6. **`criar_gateways`**: imagem `silviozv/soft-iot-gateway-zato:1.0.0`, distribuídos entre os workers de forma circular. Cada gateway recebe a API e a ponte do **seu** worker. Executa como `root`, em modo `privileged`, com IP fixo e a porta 11223 exposta.
 7. **`criar_devices`**: containers `silviozv/python-iot-device:1.0.0`, conectados ao broker MQTT do seu gateway (`BROKER_IP`, `BROKER_PORT=1883`), com IP fixo. A interface de rede é configurada manualmente no comando de inicialização.
 8. **Túneis** entre workers consecutivos, seguidos de `exp.start()` e `iota.start_network()`.
 
@@ -528,7 +528,7 @@ Os serviços Python ficam em `impl/src/services/` e são carregados pelo runtime
 
 1. **Construir a imagem do gateway**, na raiz de `myproject`:
    ```bash
-   docker build -t silviozv/soft-iot-gateway-zato:1.0.1 .
+   docker build -t silviozv/soft-iot-gateway-zato:1.0.0 .
    ```
    Publique ou atualize a tag usada no Fogbed sempre que os serviços forem alterados.
 2. **Imagens necessárias** nos workers: `silviozv/soft-iot-gateway-zato`, `silviozv/iota-zmq-bridge`, `silviozv/tangle-hornet-api`, `silviozv/python-iot-device` e as imagens do Hornet usadas pelo `fogledgerIota`.
